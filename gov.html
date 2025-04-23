@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Country Map</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.9/babel.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        #map { height: 500px; }
+        .leaflet-container { background: #f0f0f0; }
+        .leaflet-tooltip { background-color: white; border: 1px solid #ccc; padding: 5px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <a href="scratch.html" title="Return">Click here to return.</a>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Data for the 100 most populous countries (2025 estimates)
+        const countryData = {
+            "India": { population: "1.45B", capital: "New Delhi", government: "Federal Parliamentary Republic" },
+            "China": { population: "1.42B", capital: "Beijing", government: "Communist State" },
+            "United States": { population: "345M", capital: "Washington, D.C.", government: "Federal Presidential Republic" },
+            "Indonesia": { population: "282M", capital: "Jakarta", government: "Unitary Presidential Republic" },
+            "Pakistan": { population: "251M", capital: "Islamabad", government: "Federal Parliamentary Republic" },
+            "Nigeria": { population: "233M", capital: "Abuja", government: "Federal Presidential Republic" },
+            "Brazil": { population: "212M", capital: "Brasília", government: "Federal Presidential Republic" },
+            "Bangladesh": { population: "174M", capital: "Dhaka", government: "Unitary Parliamentary Republic" },
+            "Russia": { population: "145M", capital: "Moscow", government: "Federal Semi-Presidential Republic" },
+            "Mexico": { population: "131M", capital: "Mexico City", government: "Federal Presidential Republic" },
+            "Ethiopia": { population: "132M", capital: "Addis Ababa", government: "Federal Parliamentary Republic" },
+            "Japan": { population: "123M", capital: "Tokyo", government: "Unitary Parliamentary Constitutional Monarchy" },
+            "Philippines": { population: "120M", capital: "Quezon City", government: "Unitary Presidential Republic" },
+            "Egypt": { population: "111M", capital: "Cairo", government: "Unitary Semi-Presidential Republic" },
+            "Vietnam": { population: "101M", capital: "Hanoi", government: "Unitary Marxist-Leninist One-Party State" },
+            "DR Congo": { population: "108M", capital: "Kinshasa", government: "Semi-Presidential Republic" },
+            "Turkey": { population: "86M", capital: "Ankara", government: "Presidential Republic" },
+            "Iran": { population: "89M", capital: "Tehran", government: "Unitary Islamic Republic" },
+            "Germany": { population: "84M", capital: "Berlin", government: "Federal Parliamentary Republic" },
+            "Thailand": { population: "71M", capital: "Bangkok", government: "Constitutional Monarchy" },
+            "United Kingdom": { population: "69M", capital: "London", government: "Unitary Parliamentary Constitutional Monarchy" },
+            "France": { population: "66M", capital: "Paris", government: "Unitary Semi-Presidential Republic" },
+            "Italy": { population: "59M", capital: "Rome", government: "Unitary Parliamentary Republic" },
+            "South Africa": { population: "62M", capital: "Pretoria", government: "Unitary Parliamentary Republic" },
+            "Kenya": { population: "57M", capital: "Nairobi", government: "Presidential Republic" },
+            "Myanmar": { population: "55M", capital: "Naypyidaw", government: "Military Junta" },
+            "Colombia": { population: "52M", capital: "Bogotá", government: "Presidential Republic" },
+            "South Korea": { population: "51M", capital: "Seoul", government: "Unitary Presidential Republic" },
+            "Uganda": { population: "50M", capital: "Kampala", government: "Presidential Republic" },
+            "Spain": { population: "48M", capital: "Madrid", government: "Unitary Parliamentary Constitutional Monarchy" },
+            "Argentina": { population: "47M", capital: "Buenos Aires", government: "Federal Presidential Republic" },
+            "Algeria": { population: "47M", capital: "Algiers", government: "Unitary Semi-Presidential Republic" },
+            "Sudan": { population: "47M", capital: "Khartoum", government: "Transitional Government" },
+            "Ukraine": { population: "41M", capital: "Kyiv", government: "Unitary Semi-Presidential Republic" },
+            "Iraq": { population: "45M", capital: "Baghdad", government: "Federal Parliamentary Republic" },
+            "Canada": { population: "42M", capital: "Ottawa", government: "Federal Parliamentary Constitutional Monarchy" },
+            "Poland": { population: "38M", capital: "Warsaw", government: "Unitary Parliamentary Republic" },
+            "Morocco": { population: "38M", capital: "Rabat", government: "Unitary Parliamentary Constitutional Monarchy" },
+            "Uzbekistan": { population: "37M", capital: "Tashkent", government: "Presidential Republic" },
+            "Afghanistan": { population: "36M", capital: "Kabul", government: "Islamic Emirate" },
+            "Peru": { population: "35M", capital: "Lima", government: "Unitary Presidential Republic" },
+            "Angola": { population: "37M", capital: "Luanda", government: "Unitary Presidential Republic" },
+            "Malaysia": { population: "34M", capital: "Kuala Lumpur", government: "Federal Parliamentary Constitutional Monarchy" },
+            "Mozambique": { population: "34M", capital: "Maputo", government: "Presidential Republic" },
+            "Ghana": { population: "34M", capital: "Accra", government: "Unitary Presidential Republic" },
+            "Yemen": { population: "34M", capital: "Sana'a", government: "Provisional Government" },
+            "Nepal": { population: "31M", capital: "Kathmandu", government: "Federal Parliamentary Republic" },
+            "Venezuela": { population: "29M", capital: "Caracas", government: "Federal Presidential Republic" },
+            "Madagascar": { population: "31M", capital: "Antananarivo", government: "Semi-Presidential Republic" },
+            "Cameroon": { population: "29M", capital: "Yaoundé", government: "Unitary Presidential Republic" },
+            "Côte d'Ivoire": { population: "29M", capital: "Yamoussoukro", government: "Presidential Republic" },
+            "Niger": { population: "27M", capital: "Niamey", government: "Military Junta" },
+            "Australia": { population: "27M", capital: "Canberra", government: "Federal Parliamentary Constitutional Monarchy" },
+            "North Korea": { population: "26M", capital: "Pyongyang", government: "Unitary One-Party State" },
+            "Taiwan": { population: "24M", capital: "Taipei", government: "Unitary Semi-Presidential Republic" },
+            "Burkina Faso": { population: "24M", capital: "Ouagadougou", government: "Military Junta" },
+            "Mali": { population: "23M", capital: "Bamako", government: "Military Junta" },
+            "Chile": { population: "20M", capital: "Santiago", government: "Unitary Presidential Republic" },
+            "Romania": { population: "19M", capital: "Bucharest", government: "Unitary Semi-Presidential Republic" },
+            "Kazakhstan": { population: "20M", capital: "Astana", government: "Unitary Presidential Republic" },
+            "Guatemala": { population: "18M", capital: "Guatemala City", government: "Presidential Republic" },
+            "Ecuador": { population: "18M", capital: "Quito", government: "Presidential Republic" },
+            "Syria": { population: "24M", capital: "Damascus", government: "Unitary Semi-Presidential Republic" },
+            "Netherlands": { population: "18M", capital: "Amsterdam", government: "Unitary Parliamentary Constitutional Monarchy" },
+            "Senegal": { population: "18M", capital: "Dakar", government: "Presidential Republic" },
+            "Cambodia": { population: "17M", capital: "Phnom Penh", government: "Unitary Parliamentary Constitutional Monarchy" },
+            "Chad": { population: "19M", capital: "N'Djamena", government: "Transitional Military Government" },
+            "Somalia": { population: "18M", capital: "Mogadishu", government: "Federal Parliamentary Republic" },
+            "Zimbabwe": { population: "17M", capital: "Harare", government: "Presidential Republic" },
+            "South Sudan": { population: "12M", capital: "Juba", government: "Presidential Republic" },
+            "Rwanda": { population: "14M", capital: "Kigali", government: "Presidential Republic" },
+            "Guinea": { population: "14M", capital: "Conakry", government: "Military Junta" },
+            "Benin": { population: "14M", capital: "Porto-Novo", government: "Presidential Republic" },
+            "Burundi": { population: "13M", capital: "Gitega", government: "Presidential Republic" },
+            "Tunisia": { population: "12M", capital: "Tunis", government: "Unitary Semi-Presidential Republic" },
+            "Bolivia": { population: "12M", capital: "La Paz", government: "Unitary Presidential Republic" },
+            "Belgium": { population: "12M", capital: "Brussels", government: "Federal Parliamentary Constitutional Monarchy" },
+            "Haiti": { population: "12M", capital: "Port-au-Prince", government: "Semi-Presidential Republic" },
+            "Cuba": { population: "11M", capital: "Havana", government: "Unitary Marxist-Leninist One-Party State" },
+            "Jordan": { population: "11M", capital: "Amman", government: "Unitary Parliamentary Constitutional Monarchy" },
+            "Greece": { population: "10M", capital: "Athens", government: "Unitary Parliamentary Republic" },
+            "Czech Republic": { population: "11M", capital: "Prague", government: "Unitary Parliamentary Republic" },
+            "Sweden": { population: "10M", capital: "Stockholm", government: "Unitary Parliamentary Constitutional Monarchy" },
+            "Portugal": { population: "10M", capital: "Lisbon", government: "Unitary Semi-Presidential Republic" },
+            "Azerbaijan": { population: "10M", capital: "Baku", government: "Unitary Presidential Republic" },
+            "Hungary": { population: "10M", capital: "Budapest", government: "Unitary Parliamentary Republic" },
+            "Israel": { population: "10M", capital: "Jerusalem", government: "Unitary Parliamentary Republic" },
+            "Honduras": { population: "10M", capital: "Tegucigalpa", government: "Presidential Republic" },
+            "Tajikistan": { population: "10M", capital: "Dushanbe", government: "Unitary Presidential Republic" },
+            "United Arab Emirates": { population: "9M", capital: "Abu Dhabi", government: "Federal Absolute Monarchy" },
+            "Belarus": { population: "9M", capital: "Minsk", government: "Unitary Presidential Republic" },
+            "Papua New Guinea": { population: "9M", capital: "Port Moresby", government: "Unitary Parliamentary Constitutional Monarchy" },
+            "Austria": { population: "9M", capital: "Vienna", government: "Federal Parliamentary Republic" },
+            "Switzerland": { population: "9M", capital: "Bern", government: "Federal Semi-Direct Democracy" },
+            "Sierra Leone": { population: "9M", capital: "Freetown", government: "Presidential Republic" },
+            "Togo": { population: "9M", capital: "Lomé", government: "Presidential Republic" },
+            "Hong Kong": { population: "8M", capital: "Hong Kong", government: "Special Administrative Region" },
+            "Paraguay": { population: "7M", capital: "Asunción", government: "Unitary Presidential Republic" },
+            "Laos": { population: "8M", capital: "Vientiane", government: "Unitary Marxist-Leninist One-Party State" }
+        };
+
+        // Mapping of GeoJSON names to countryData keys for known mismatches
+        const countryNameMap = {
+            "United States of America": "United States",
+            "Democratic Republic of the Congo": "DR Congo",
+            "Republic of Korea": "South Korea",
+            "Democratic People's Republic of Korea": "North Korea",
+            "United Kingdom of Great Britain and Northern Ireland": "United Kingdom",
+            "Russian Federation": "Russia",
+            "Czechia": "Czech Republic",
+            "Burma": "Myanmar",
+            "Côte d'Ivoire": "Côte d'Ivoire", // Ensure special characters are handled
+            "Taiwan, Province of China": "Taiwan",
+            "Bolivia (Plurinational State of)": "Bolivia",
+            "Syrian Arab Republic": "Syria",
+            "Iran (Islamic Republic of)": "Iran",
+            "Lao People's Democratic Republic": "Laos",
+            "Venezuela (Bolivarian Republic of)": "Venezuela",
+            "Viet Nam": "Vietnam"
+        };
+
+        const App = () => {
+            const [selectedCountry, setSelectedCountry] = useState(null);
+            const [map, setMap] = useState(null);
+
+            useEffect(() => {
+                // Initialize Leaflet map
+                const mapInstance = L.map('map').setView([0, 0], 2);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(mapInstance);
+
+                // Load GeoJSON data
+                fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
+                    .then(response => response.json())
+                    .then(data => {
+                        L.geoJSON(data, {
+                            style: {
+                                color: '#3388ff',
+                                weight: 2,
+                                fillOpacity: 0.2
+                            },
+                            onEachFeature: (feature, layer) => {
+                                const geoJsonCountryName = feature.properties.name;
+
+                                // Normalize country name
+                                let normalizedCountryName = geoJsonCountryName;
+                                if (countryNameMap[geoJsonCountryName]) {
+                                    normalizedCountryName = countryNameMap[geoJsonCountryName];
+                                } else {
+                                    // Fallback: Find a countryData key that matches or partially matches
+                                    normalizedCountryName = Object.keys(countryData).find(
+                                        key => key.toLowerCase() === geoJsonCountryName.toLowerCase() ||
+                                               geoJsonCountryName.toLowerCase().includes(key.toLowerCase()) ||
+                                               key.toLowerCase().includes(geoJsonCountryName.toLowerCase())
+                                    ) || geoJsonCountryName;
+                                }
+
+                                // Skip Hong Kong as it's not a standard country in GeoJSON
+                                if (normalizedCountryName === "Hong Kong") {
+                                    return;
+                                }
+
+                                // Bind tooltip for hover
+                                if (countryData[normalizedCountryName]) {
+                                    const { population, capital, government } = countryData[normalizedCountryName];
+                                    layer.bindTooltip(
+                                        `<strong>${normalizedCountryName}</strong><br>
+                                        Population: ${population}<br>
+                                        Capital: ${capital}`,
+                                        { sticky: true }
+                                    );
+                                } else {
+                                    layer.bindTooltip(`<strong>${geoJsonCountryName}</strong><br>No data available`, { sticky: true });
+                                }
+
+                                // Bind popup for click
+                                layer.bindPopup(() => {
+                                    if (countryData[normalizedCountryName]) {
+                                        const { population, capital, government } = countryData[normalizedCountryName];
+                                        return `
+                                            <strong>${normalizedCountryName}</strong><br>
+                                            Population: ${population}<br>
+                                            Capital: ${capital}<br>
+                                            Government: ${government}
+                                        `;
+                                    }
+                                    return `<strong>${geoJsonCountryName}</strong><br>No data available`;
+                                });
+
+                                // Handle click event
+                                layer.on({
+                                    click: () => {
+                                        setSelectedCountry(normalizedCountryName);
+                                        layer.setStyle({ fillOpacity: 0.7 });
+                                        layer.openPopup();
+                                        mapInstance.eachLayer(l => {
+                                            if (l !== layer && l.setStyle) {
+                                                l.setStyle({ fillOpacity: 0.2 });
+                                            }
+                                        });
+                                    },
+                                    mouseover: () => layer.openTooltip(),
+                                    mouseout: () => layer.closeTooltip()
+                                });
+                            }
+                        }).addTo(mapInstance);
+                    });
+
+                setMap(mapInstance);
+
+                return () => mapInstance.remove();
+            }, []);
+
+            return (
+                <div className="container mx-auto p-4">
+                    <h1 className="text-3xl font-bold mb-4">Interactive Country Map</h1>
+                    <div id="map" className="mb-4"></div>
+                    {selectedCountry ? (
+                        <div className="bg-gray-100 p-4 rounded-lg">
+                            <h2 className="text-2xl font-semibold">{selectedCountry}</h2>
+                            {countryData[selectedCountry] ? (
+                                <div>
+                                    <p><strong>Population:</strong> {countryData[selectedCountry].population}</p>
+                                    <p><strong>Capital:</strong> {countryData[selectedCountry].capital}</p>
+                                    <p><strong>Government:</strong> {countryData[selectedCountry].government}</p>
+                                </div>
+                            ) : (
+                                <p>No data available for this country.</p>
+                           
+
+                            )}
+                        </div>
+                    ) : (
+                        <p className="text-gray-600">Click a country to view details.</p>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

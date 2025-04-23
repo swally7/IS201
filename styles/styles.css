@@ -1,0 +1,48 @@
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    color: white;
+}
+
+a {
+    color: black;
+}
+
+.italic {
+    font-style: italic;
+    font-weight: bold;
+}
+
+.common {
+
+    border: 2px;
+    position: absolute;
+}
+
+.header {
+    text-align: center;
+    background-color: rgb(242, 215, 59);
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    height: 300px;
+}
+
+.mainbody {
+    border-top: solid 5px black;
+    top: 317px;
+    left: 10px;
+    right: 10px;
+    
+}
+
+.footer {
+    text-align: right;
+    background-color: rgb(254, 74, 74);
+    bottom: 5px;
+    right: 15px;
+    left: 1070px;
+    height: 25px;
+    position: fixed;
+}
+
+
